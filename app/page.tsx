@@ -1,95 +1,148 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useState } from "react";
+import Cookies from "js-cookie";
+import { useRouter } from "next/navigation";
+import {
+  TextInput,
+  Button,
+  Group,
+  Paper,
+  Title,
+  Divider,
+  Notification,
+  Stack,
+  Box,
+} from "@mantine/core";
 
-export default function Home() {
+const Home = () => {
+  const router = useRouter();
+  const [action, setAction] = useState<"Sign Up" | "Login">("Sign Up");
+  const [formData, setFormData] = useState({
+    userName: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    const url = action === "Sign Up" 
+      ? "http://localhost:5010/api/User/signup" 
+      : "http://localhost:5010/api/User/login";
+
+    const payload = action === "Sign Up"
+      ? formData
+      : { email: formData.email, password: formData.password };
+
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await response.json();
+      
+      if (!response.ok) throw new Error(result.message || `${action} failed`);
+
+      if (result.token) {
+        Cookies.set("token", result.token);
+        Cookies.set("userId", result.user.id);
+        Cookies.set("role", result.role);
+        router.push(result.role === "admin" ? "/admin" : "/user");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    }
+  };
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <Group justify="center" align="center" h="100vh" bg="gray.2">
+      <Paper shadow="md" p="lg" radius="md" w={380} bg="white">
+        <Stack gap="md">
+          <Title order={2} ta="center" c="dark">
+            {action}
+          </Title>
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+          <Divider color="gray.4" />
+
+          <Stack gap="sm">
+            {action === "Sign Up" && (
+              <TextInput
+                label="Username"
+                placeholder="Enter your username"
+                name="userName"
+                value={formData.userName}
+                onChange={handleInputChange}
+              />
+            )}
+
+            <TextInput
+              label="Email"
+              placeholder="Enter your email"
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
             />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
+
+            <TextInput
+              label="Password"
+              placeholder="Enter your password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleInputChange}
+            />
+          </Stack>
+
+          {error && (
+            <Notification color="red" title="Error" onClose={() => setError(null)}>
+              {error}
+            </Notification>
+          )}
+
+          <Group justify="center" gap="sm">
+            <Button
+              variant={action === "Sign Up" ? "filled" : "outline"}
+              color="violet"
+              radius="md"
+              onClick={() => {
+                setAction("Sign Up");
+                setError(null);
+              }}
+            >
+              Sign Up
+            </Button>
+            
+            <Button
+              variant={action === "Login" ? "filled" : "outline"}
+              color="violet"
+              radius="md"
+              onClick={() => {
+                setAction("Login");
+                setError(null);
+              }}
+            >
+              Login
+            </Button>
+          </Group>
+
+          <Button
+            fullWidth
+            color="violet"
+            radius="md"
+            onClick={handleSubmit}
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+            Submit
+          </Button>
+        </Stack>
+      </Paper>
+    </Group>
   );
-}
+};
+
+export default Home;
